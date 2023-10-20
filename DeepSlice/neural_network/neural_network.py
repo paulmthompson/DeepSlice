@@ -38,8 +38,9 @@ def initialise_network(xception_weights: str, weights: str, species: str) -> Seq
     :rtype: keras.models.Sequential
     """
     base_model = Xception(include_top=True, weights=xception_weights)
-    base_model._layers.pop()
-    base_model._layers.pop()
+
+    base_model = Model(inputs=base_model.input, outputs=base_model.layers[-1].output,name="xception")
+
     if species == "rat":
         inputs = Input(shape=(299, 299, 3))
         base_model_layer = base_model(inputs, training=True)
@@ -55,11 +56,9 @@ def initialise_network(xception_weights: str, weights: str, species: str) -> Seq
         model.add(Dense(9, activation="linear"))
 
     if weights != None:
-        model.load_weights(weights)
+        #model.load_weights(weights,by_name=True,skip_mismatch=True)
+        model.load_weights(weights,by_name=True)
     return model
-
-
-
 
 def load_images_from_path(image_path: str) -> np.ndarray:
     """
@@ -152,6 +151,7 @@ def predictions_util(
     :return: The predicted alignments
     :rtype: list
     """
+    #model.load_weights(primary_weights,by_name=True,skip_mismatch=True)
     model.load_weights(primary_weights)
     predictions = model.predict(
         image_generator,
@@ -161,6 +161,7 @@ def predictions_util(
     predictions = predictions.astype(np.float64)
     if ensemble:
         image_generator.reset()
+        #model.load_weights(secondary_weights,by_name=True,skip_mismatch=True)
         model.load_weights(secondary_weights)
         secondary_predictions = model.predict(
             image_generator,
@@ -168,6 +169,7 @@ def predictions_util(
             verbose=1,
         )
         predictions = np.mean([predictions, secondary_predictions], axis=0)
+        #model.load_weights(primary_weights,by_name=True,skip_mismatch=True)
         model.load_weights(primary_weights)
     filenames = image_generator.filenames
     filenames = [os.path.basename(i) for i in filenames]
